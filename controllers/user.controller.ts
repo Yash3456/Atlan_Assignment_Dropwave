@@ -4,6 +4,22 @@ import prisma from "../utils/prisma";
 import jwt from "jsonwebtoken";
 import { sendToken } from "../utils/send-token";
 import nodemailer from "nodemailer";
+import geolib from "geolib";
+
+interface Location {
+  latitude: number;
+  longitude: number;
+}
+
+interface PricingOptions {
+  trafficFactor?: number;
+  weatherFactor?: number;
+  timeFactor?: number;
+}
+
+const toRadians = (degrees: number): number => {
+  return degrees * (Math.PI / 180);
+};
 
 // NodeMailer transporter for sending emails
 const transporter = nodemailer.createTransport({
@@ -264,5 +280,73 @@ export const getAllRides = async (req: any, res: Response) => {
       success: false,
       message: "Failed to retrieve rides",
     });
+  }
+};
+
+
+// Haversine formula to calculate the distance between two locations
+const haversineDistance = (loc1: Location, loc2: Location): number => {
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = toRadians(loc2.latitude - loc1.latitude);
+  const dLon = toRadians(loc2.longitude - loc1.longitude);
+
+  const lat1 = toRadians(loc1.latitude);
+  const lat2 = toRadians(loc2.latitude);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in kilometers
+};
+
+// Ride price calculation based on distance and factors
+const calculateRidePrice = (
+  pickup: Location,
+  destination: Location,
+  surgeMultiplier: number,
+  options: PricingOptions = {}
+): string => {
+  const BASE_FARE = 5;
+  const RATE_PER_KM = 2;
+
+  const { trafficFactor = 1, weatherFactor = 1, timeFactor = 1 } = options;
+
+  const distanceInKm = haversineDistance(pickup, destination);
+
+  let totalFare = BASE_FARE + distanceInKm * RATE_PER_KM;
+
+  totalFare *= surgeMultiplier;
+  totalFare *= trafficFactor;
+  totalFare *= weatherFactor;
+  totalFare *= timeFactor;
+
+  return totalFare.toFixed(2);
+};
+
+// Main function to handle the price calculation API
+export const PriceCalculation = async (req: any, res: Response) => {
+  try {
+    const { pickup, destination, surgeMultiplier, trafficFactor, weatherFactor, timeFactor } = req.body;
+
+    if (!pickup || !destination || !surgeMultiplier) {
+      return res.status(400).json({ success: false, message: "Invalid or missing parameters" });
+    }
+
+    const pickupLocation: Location = { latitude: pickup.latitude, longitude: pickup.longitude };
+    const destinationLocation: Location = { latitude: destination.latitude, longitude: destination.longitude };
+
+    const ridePrice = calculateRidePrice(
+      pickupLocation,
+      destinationLocation,
+      surgeMultiplier,
+      { trafficFactor, weatherFactor, timeFactor }
+    );
+
+    return res.status(200).json({ success: true, price: ridePrice });
+  } catch (error:any) {
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };

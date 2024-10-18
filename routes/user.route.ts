@@ -2,6 +2,7 @@ import express from "express";
 import {
   getAllRides,
   getLoggedInUserData,
+  PriceCalculation,
   registerUser,
   sendingOtpToEmail,
   verifyingEmail,
@@ -23,4 +24,5 @@ userRouter.get("/me", isAuthenticated, getLoggedInUserData);
 
 userRouter.get("/get-rides", isAuthenticated, getAllRides);
 
+userRouter.post("/ride-price", isAuthenticated, PriceCalculation);
 export default userRouter;
