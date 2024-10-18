@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String?           @unique
+  address         String
+  phoneNumber     String            @unique
+  createdAt       DateTime          @default(now())
+  role            String
+  updatedAt       DateTime          @updatedAt
+  bookings        Bookings[]        @relation("UserBookings")
+  advanceBookings AdvanceBookings[] @relation("UserAdvanceBookings")
+}
+
+model Drivers {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String            @unique
+  phoneNumber     String            @unique
+  licenseNumber   String
+  createdAt       DateTime          @default(now())
+  rating          Float             @default(0)
+  status          String            @default("inactive")
+  vehicleId       String            @db.ObjectId
+  country         String
+  totalEarnings   Float             @default(0)
+  totalRides      Int               @default(0)
+  pendingRides    Int               @default(0)
+  cancelRides     Int               @default(0)
+  updatedAt       DateTime          @updatedAt
+  bookings        Bookings[]        @relation("DriverBookings")
+  advanceBookings AdvanceBookings[] @relation("DriverAdvanceBookings")
+}
+
+model Vehicle {
+  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
+  vehicleName         String
+  vehicleModel        String
+  vehicleCapacity     Float
+  yearOfManufacture   Int
+  currentLocationLat  Float
+  currentLocationLong Float
+  status              String
+  rating              Float             @default(0)
+  licensePlate        String
+  typeOfVehicle       String
+  Bookings            Bookings[]
+  AdvanceBookings     AdvanceBookings[]
+}
+
+model Bookings {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  driverId      String   @db.ObjectId
+  vehicleId     String   @db.ObjectId
+  bookingDate   DateTime @default(now())
+  pickupLat     Float
+  pickupLong    Float
+  dropoffLat    Float
+  dropoffLong   Float
+  status        String
+  pickupTime    DateTime
+  dropOffTime   DateTime
+  estimatedCost Float
+  amountOfLoad  Float
+  trackingId    String   @db.ObjectId
+  user          Users    @relation("UserBookings", fields: [userId], references: [id])
+  driver        Drivers  @relation("DriverBookings", fields: [driverId], references: [id])
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  location      Location @relation(fields: [trackingId], references: [trackingId])
+}
+
+model AdvanceBookings {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  driverId      String   @db.ObjectId
+  vehicleId     String   @db.ObjectId
+  bookingDate   DateTime @default(now())
+  pickupLat     Float
+  pickupLong    Float
+  dropoffLat    Float
+  dropoffLong   Float
+  status        String
+  pickupTime    DateTime
+  dropOffTime   DateTime
+  estimatedCost Float
+  amountOfLoad  Float
+  trackingId    String   @db.ObjectId
+  pickupDate    DateTime
+  updatedAt     DateTime @updatedAt
+  user          Users    @relation("UserAdvanceBookings", fields: [userId], references: [id])
+  driver        Drivers  @relation("DriverAdvanceBookings", fields: [driverId], references: [id])
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  location      Location @relation(fields: [trackingId], references: [trackingId])
+}
+
+model Location {
+  trackingId      String            @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId       String            @db.ObjectId
+  vehicleId       String            @db.ObjectId
+  locationLat     Float
+  locationLong    Float
+  timestamp       DateTime
+  bookings        Bookings[]
+  advanceBookings AdvanceBookings[]
+}
